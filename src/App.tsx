@@ -1,75 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import { Component } from 'react';
+import { Clock } from './Clock';
 import './App.scss';
 
-function getRandomName(): string {
-  const value = Date.now().toString().slice(-4);
+const getRandomName = (): string => `Clock-${Math.floor(Math.random() * 100)}`;
 
-  return `Clock-${value}`;
+interface AppState {
+  hasClock: boolean;
+  clockName: string;
 }
 
-export const App: React.FC = () => {
-  const [clockName, setClockName] = useState<string>('Clock-0');
-  const [time, setTime] = useState(new Date().toUTCString().slice(-12, -4));
-  const [hasClock, setHasClock] = useState<boolean>(true);
+export class App extends Component<{}, AppState> {
+  nameTimerId: number | undefined;
 
-  useEffect(() => {
-    // Start a timer to update the clock name every 3300ms
-    const nameTimerId = window.setInterval(() => {
-      setClockName(prevName => {
+  state: AppState = {
+    hasClock: true,
+    clockName: 'Clock-0',
+  };
+
+  componentDidMount() {
+    // Add event listeners for toggling the clock visibility
+    document.addEventListener('contextmenu', this.handleContextMenu);
+    document.addEventListener('click', this.handleClick);
+
+    // Start updating the clock name every 3300ms
+    this.nameTimerId = window.setInterval(() => {
+      this.setState(prevState => {
         const newName = getRandomName();
-        // eslint-disable-next-line no-console
-        console.warn(`Renamed from ${prevName} to ${newName}`);
+        //eslint-disable-next-line no-console
 
-        return newName;
+        console.warn(`Renamed from ${prevState.clockName} to ${newName}`); // eslint-disable-next-line no-console
+
+        return { clockName: newName };
       });
     }, 3300);
+  }
 
-    // Start a timer to update the time every second
+  componentWillUnmount() {
+    // Remove event listeners and clear the timer
+    document.removeEventListener('contextmenu', this.handleContextMenu);
+    document.removeEventListener('click', this.handleClick);
 
-    const timeTimerId = window.setInterval(() => {
-      setTime(new Date().toUTCString().slice(-12, -4));
-      // eslint-disable-next-line no-console
-      console.log(`Time updated to ${new Date().toUTCString().slice(-12, -4)}`);
-    }, 1000);
+    if (this.nameTimerId) {
+      window.clearInterval(this.nameTimerId);
+    }
+  }
 
-    // Clear the timers when the component unmounts
+  handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault(); // Prevent the default context menu
+    this.setState({ hasClock: false }); // Hide the clock on right-click
+  };
 
-    return () => {
-      window.clearInterval(nameTimerId);
-      window.clearInterval(timeTimerId);
-    };
-  }, []);
+  handleClick = () => {
+    this.setState({ hasClock: true }); // Show the clock on left-click
+  };
 
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      event.preventDefault();
-      setHasClock(false); // Hide the clock on right-click
-    };
+  render() {
+    const { hasClock, clockName } = this.state;
 
-    const handleClick = () => {
-      setHasClock(true); // Show the clock on left-click
-    };
-
-    // Add event listeners
-    document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('click', handleClick);
-
-    return () => {
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('click', handleClick);
-    };
-  }, []);
-
-  return (
-    <div className="App">
-      <h1>React clock</h1>
-      {hasClock && (
-        <div className="Clock">
-          <strong className="Clock__name">{clockName}</strong>
-          {' time is '}
-          <span className="Clock__time">{time}</span>
-        </div>
-      )}
-    </div>
-  );
-};
+    return (
+      <div className="App">
+        <h1>React Clock</h1>
+        {hasClock && <Clock name={clockName} />}
+      </div>
+    );
+  }
+}
